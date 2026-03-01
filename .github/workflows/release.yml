@@ -15,10 +15,10 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-22.04
-            binary: src-tauri/target/release/jgrpp-launcher
+            binary: src-tauri/target/release/jgrpp-launcher-linux
             artifact_name: jgrpp-launcher-linux-x64
           - runner: windows-latest
-            binary: src-tauri/target/release/jgrpp-launcher.exe
+            binary: src-tauri/target/release/jgrpp-launcher-windows.exe
             artifact_name: jgrpp-launcher-windows-x64.exe
     
     runs-on: ${{ matrix.runner }}
