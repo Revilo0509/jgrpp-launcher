@@ -1,6 +1,6 @@
-# JGRPP Launcher
+> **AI-generated**
 
-> **AI-generated README**
+# JGRPP Launcher
 
 A cross-platform desktop application for managing and launching JGRPP (OpenTTD-patches) versions.
 
