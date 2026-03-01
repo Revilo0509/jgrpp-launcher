@@ -18,7 +18,7 @@ jobs:
             args: '--target aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04'
+          - platform: 'ubuntu-latest'
             args: ''
           - platform: 'windows-latest'
             args: '--no-bundle'
@@ -39,10 +39,22 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-          cache: true
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -59,4 +71,4 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           args: ${{ matrix.args }}
-          releaseAssetNamePattern: '[name]-[version]-[platform]-[arch].[ext]'
+          assetNamePattern: '[name]-[version]-[platform]-[arch].[ext]'
