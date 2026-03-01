@@ -10,20 +10,7 @@ jobs:
   publish-tauri:
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'macos-latest'
-            target: 'aarch64-apple-darwin'
-          - platform: 'macos-latest'
-            target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04'
-            target: 'x86_64-unknown-linux-gnu'
-          - platform: 'windows-latest'
-            target: ''
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -36,9 +23,6 @@ jobs:
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        if: matrix.target != ''
-        with:
-          targets: ${{ matrix.target }}
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -49,12 +33,11 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             src-tauri/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.target || 'default' }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -70,6 +53,3 @@ jobs:
           releaseName: 'JGRPP Launcher v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
-          args: ${{ matrix.target != '' && format('--target {0}', matrix.target) || '' }}
-          assetNamePattern: 'jgrpp-launcher-{{version}}-{{os}}-{{arch}}.{{ext}}'
-          uploadPlainBinary: true
