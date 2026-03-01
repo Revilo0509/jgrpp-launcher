@@ -136,6 +136,26 @@ body {
   box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
 }
 
+.btn-create-shortcut {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--card-bg);
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-create-shortcut:hover {
+  background: var(--accent);
+  color: var(--primary-bg);
+}
+
 .settings-btn {
   background: transparent;
   border: none;

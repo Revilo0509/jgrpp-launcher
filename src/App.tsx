@@ -85,6 +85,7 @@ function App() {
 
   useEffect(() => {
     if (selectedVersion) {
+      console.log("Selected version changed to:", selectedVersion.tag);
       loadChangelog(selectedVersion.tag);
     }
   }, [selectedVersion]);
@@ -128,12 +129,15 @@ function App() {
 
   async function loadChangelog(tag: string) {
     setLoadingChangelog(true);
+    setChangelog("");
     try {
+      console.log("Loading changelog for:", tag);
       const log = await invoke<string>("fetch_changelog", { versionTag: tag });
+      console.log("Changelog loaded, length:", log.length);
       setChangelog(log);
     } catch (err) {
       console.error("Failed to load changelog:", err);
-      setChangelog("Failed to load changelog");
+      setChangelog(`Failed to load changelog: ${err}`);
     } finally {
       setLoadingChangelog(false);
     }

@@ -1,4 +1,4 @@
-use log::info;
+use log::{info, error};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -692,21 +692,32 @@ pub fn load_config() -> AppConfig {
 
 #[tauri::command]
 async fn fetch_changelog(state: State<'_, Arc<AppState>>, version_tag: String) -> Result<String, String> {
-    let tag = version_tag.trim_start_matches("jgrpp-");
-    let url = format!("https://raw.githubusercontent.com/JGRennison/OpenTTD-patches/{}/jgrpp-changelog.md", tag);
+    info!("Fetching changelog for: {}", version_tag);
+    let url = format!("https://raw.githubusercontent.com/JGRennison/OpenTTD-patches/{}/jgrpp-changelog.md", version_tag);
+    info!("Changelog URL: {}", url);
     
     let response = state.client
         .get(&url)
         .header("User-Agent", "JGRPP-Launcher")
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch changelog: {}", e))?;
+        .map_err(|e| {
+            error!("Failed to fetch changelog: {}", e);
+            format!("Failed to fetch changelog: {}", e)
+        })?;
+    
+    info!("Changelog response status: {}", response.status());
+    
+    if !response.status().is_success() {
+        return Err(format!("Changelog not found (HTTP {})", response.status()));
+    }
     
     let changelog = response
         .text()
         .await
         .map_err(|e| format!("Failed to read changelog: {}", e))?;
     
+    info!("Changelog loaded, length: {}", changelog.len());
     Ok(changelog)
 }
 
