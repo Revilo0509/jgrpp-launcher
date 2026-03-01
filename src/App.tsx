@@ -203,6 +203,19 @@ function App() {
     }
   }
 
+  async function handleCreateShortcutDefault() {
+    if (!config?.default_version) return;
+    
+    try {
+      setStatusMessage("Creating shortcut for default version...");
+      const path = await invoke<string>("create_shortcut", { versionTag: config.default_version });
+      setStatusMessage(`Shortcut created: ${path}`);
+    } catch (err) {
+      console.error("Shortcut failed:", err);
+      setStatusMessage(`Shortcut failed: ${err}`);
+    }
+  }
+
   async function handleSelectDirectory() {
     try {
       const selected = await open({
@@ -251,29 +264,26 @@ function App() {
   return (
     <div className="app" data-tauri-drag-region>
       <header className="header" data-tauri-drag-region>
-        <div className="window-controls">
-          <button className="window-btn minimize" onClick={async () => { const win = getCurrentWindow(); await win.minimize(); }}>
-            <svg width="12" height="12" viewBox="0 0 12 12"><rect y="5" width="12" height="2" fill="currentColor"/></svg>
-          </button>
-          <button className="window-btn maximize" onClick={async () => { const win = getCurrentWindow(); const isMax = await win.isMaximized(); if (isMax) { await win.unmaximize(); } else { await win.maximize(); } }}>
-            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
-          </button>
-          <button className="window-btn close" onClick={async () => { const win = getCurrentWindow(); await win.close(); }}>
-            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M1 11L11 1" stroke="currentColor" strokeWidth="2"/></svg>
-          </button>
-        </div>
         <div className="header-left" data-tauri-drag-region>
           <h1>JGRPP Launcher</h1>
           <span className="platform-badge">{platform}</span>
         </div>
         <div className="header-actions">
           {config?.default_version && (
-            <button className="btn-launch-default" onClick={handleLaunchDefault}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5,3 19,12 5,21"></polygon>
-              </svg>
-              Launch Default
-            </button>
+            <>
+              <button className="btn-launch-default" onClick={handleLaunchDefault}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5,3 19,12 5,21"></polygon>
+                </svg>
+                Launch Default
+              </button>
+              <button className="btn-create-shortcut" onClick={handleCreateShortcutDefault} title="Create shortcut for default version">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path>
+                </svg>
+              </button>
+            </>
           )}
           <button className="settings-btn" onClick={() => setShowSettings(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -281,6 +291,17 @@ function App() {
               <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
             </svg>
           </button>
+          <div className="window-controls">
+            <button className="window-btn minimize" onClick={async () => { const win = getCurrentWindow(); await win.minimize(); }}>
+              <svg width="12" height="12" viewBox="0 0 12 12"><rect y="5" width="12" height="2" fill="currentColor"/></svg>
+            </button>
+            <button className="window-btn maximize" onClick={async () => { const win = getCurrentWindow(); const isMax = await win.isMaximized(); if (isMax) { await win.unmaximize(); } else { await win.maximize(); } }}>
+              <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
+            </button>
+            <button className="window-btn close" onClick={async () => { const win = getCurrentWindow(); await win.close(); }}>
+              <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M1 11L11 1" stroke="currentColor" strokeWidth="2"/></svg>
+            </button>
+          </div>
         </div>
       </header>
 
