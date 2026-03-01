@@ -15,8 +15,8 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-22.04
-            binary: src-tauri/target/release/jgrpp-launcher
-            artifact_name: jgrpp-launcher-linux-x64
+            binary: src-tauri/target/release/bundle/appimage/jgrpp-launcher_1.0.0_amd64.AppImage
+            artifact_name: jgrpp-launcher-linux-x64.AppImage
           - runner: windows-latest
             binary: src-tauri/target/release/jgrpp-launcher.exe
             artifact_name: jgrpp-launcher-windows-x64.exe
@@ -46,7 +46,7 @@ jobs:
         run: npm ci
 
       - name: Build Tauri binary
-        run: npm run tauri build -- --no-bundle
+        run: npm run tauri build
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
