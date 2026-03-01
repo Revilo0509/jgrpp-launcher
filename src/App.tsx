@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./App.css";
 
 interface GameVersion {
@@ -16,15 +17,6 @@ interface GameVersion {
   archive_type: string;
 }
 
-interface AssetStatus {
-  has_lang: boolean;
-  has_graphics: boolean;
-  has_sound: boolean;
-  lang_path: string | null;
-  graphics_path: string | null;
-  sound_path: string | null;
-}
-
 interface DownloadProgress {
   version_tag: string;
   downloaded_bytes: number;
@@ -35,7 +27,7 @@ interface DownloadProgress {
 interface AppConfig {
   install_dir: string;
   launch_options: string;
-  auto_download_assets: boolean;
+  default_version: string | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -63,11 +55,13 @@ function App() {
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [platform, setPlatform] = useState<string>("");
   const [config, setConfig] = useState<AppConfig | null>(null);
-  const [assetStatus, setAssetStatus] = useState<AssetStatus | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [launchOptions, setLaunchOptions] = useState("");
   const [installDir, setInstallDir] = useState("");
+  const [defaultVersion, setDefaultVersion] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [changelog, setChangelog] = useState<string>("");
+  const [loadingChangelog, setLoadingChangelog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -83,23 +77,15 @@ function App() {
       loadVersions();
     });
     
-    const unlistenAssets = listen<string>("assets-downloaded", () => {
-      setStatusMessage("Assets downloaded!");
-      if (selectedVersion) {
-        checkAssets(selectedVersion.tag);
-      }
-    });
-    
     return () => {
       unlistenProgress.then(fn => fn());
       unlistenComplete.then(fn => fn());
-      unlistenAssets.then(fn => fn());
     };
   }, []);
 
   useEffect(() => {
     if (selectedVersion) {
-      checkAssets(selectedVersion.tag);
+      loadChangelog(selectedVersion.tag);
     }
   }, [selectedVersion]);
 
@@ -115,6 +101,7 @@ function App() {
       setConfig(cfg);
       setInstallDir(cfg.install_dir);
       setLaunchOptions(cfg.launch_options);
+      setDefaultVersion(cfg.default_version || "");
       if (vers.length > 0) {
         setSelectedVersion(vers[0]);
       }
@@ -139,12 +126,16 @@ function App() {
     }
   }
 
-  async function checkAssets(versionTag: string) {
+  async function loadChangelog(tag: string) {
+    setLoadingChangelog(true);
     try {
-      const status = await invoke<AssetStatus>("check_asset_status", { versionTag });
-      setAssetStatus(status);
+      const log = await invoke<string>("fetch_changelog", { versionTag: tag });
+      setChangelog(log);
     } catch (err) {
-      console.error("Failed to check assets:", err);
+      console.error("Failed to load changelog:", err);
+      setChangelog("Failed to load changelog");
+    } finally {
+      setLoadingChangelog(false);
     }
   }
 
@@ -178,11 +169,6 @@ function App() {
   }
 
   async function handleLaunch(version: GameVersion) {
-    if (!assetStatus?.has_lang || !assetStatus?.has_graphics || !assetStatus?.has_sound) {
-      const proceed = confirm("Some assets may be missing. Launch anyway?");
-      if (!proceed) return;
-    }
-
     try {
       setStatusMessage(`Launching ${version.name}...`);
       await invoke("launch_version", { versionTag: version.tag });
@@ -193,15 +179,27 @@ function App() {
     }
   }
 
-  async function handleDownloadAssets() {
+  async function handleLaunchDefault() {
+    try {
+      setStatusMessage("Launching default version...");
+      await invoke("launch_default_version");
+      setStatusMessage("Game launched!");
+    } catch (err) {
+      console.error("Launch failed:", err);
+      setStatusMessage(`Launch failed: ${err}`);
+    }
+  }
+
+  async function handleCreateShortcut() {
     if (!selectedVersion) return;
     
     try {
-      setStatusMessage("Downloading assets...");
-      await invoke("download_assets", { versionTag: selectedVersion.tag });
+      setStatusMessage("Creating shortcut...");
+      const path = await invoke<string>("create_shortcut", { versionTag: selectedVersion.tag });
+      setStatusMessage(`Shortcut created: ${path}`);
     } catch (err) {
-      console.error("Asset download failed:", err);
-      setStatusMessage(`Asset download failed: ${err}`);
+      console.error("Shortcut failed:", err);
+      setStatusMessage(`Shortcut failed: ${err}`);
     }
   }
 
@@ -226,13 +224,13 @@ function App() {
         config: {
           install_dir: installDir,
           launch_options: launchOptions,
-          auto_download_assets: config?.auto_download_assets ?? true,
+          default_version: defaultVersion || null,
         },
       });
       setConfig({
-        ...config!,
         install_dir: installDir,
         launch_options: launchOptions,
+        default_version: defaultVersion || null,
       });
       setShowSettings(false);
       setStatusMessage("Settings saved");
@@ -251,18 +249,39 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="header-left">
+    <div className="app" data-tauri-drag-region>
+      <header className="header" data-tauri-drag-region>
+        <div className="window-controls">
+          <button className="window-btn minimize" onClick={async () => { const win = getCurrentWindow(); await win.minimize(); }}>
+            <svg width="12" height="12" viewBox="0 0 12 12"><rect y="5" width="12" height="2" fill="currentColor"/></svg>
+          </button>
+          <button className="window-btn maximize" onClick={async () => { const win = getCurrentWindow(); const isMax = await win.isMaximized(); if (isMax) { await win.unmaximize(); } else { await win.maximize(); } }}>
+            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
+          </button>
+          <button className="window-btn close" onClick={async () => { const win = getCurrentWindow(); await win.close(); }}>
+            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 1L11 11M1 11L11 1" stroke="currentColor" strokeWidth="2"/></svg>
+          </button>
+        </div>
+        <div className="header-left" data-tauri-drag-region>
           <h1>JGRPP Launcher</h1>
           <span className="platform-badge">{platform}</span>
         </div>
-        <button className="settings-btn" onClick={() => setShowSettings(true)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-          </svg>
-        </button>
+        <div className="header-actions">
+          {config?.default_version && (
+            <button className="btn-launch-default" onClick={handleLaunchDefault}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5,3 19,12 5,21"></polygon>
+              </svg>
+              Launch Default
+            </button>
+          )}
+          <button className="settings-btn" onClick={() => setShowSettings(true)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <main className="main">
@@ -279,11 +298,14 @@ function App() {
             {versions.map((version) => (
               <div
                 key={version.tag}
-                className={`version-card ${selectedVersion?.tag === version.tag ? "selected" : ""}`}
+                className={`version-card ${selectedVersion?.tag === version.tag ? "selected" : ""} ${config?.default_version === version.tag ? "default" : ""}`}
                 onClick={() => setSelectedVersion(version)}
               >
                 <div className="version-info">
-                  <span className="version-name">{version.name}</span>
+                  <span className="version-name">
+                    {version.name}
+                    {config?.default_version === version.tag && <span className="default-badge">Default</span>}
+                  </span>
                   <span className="version-date">{formatDate(version.date)}</span>
                 </div>
                 <div className="version-status">
@@ -329,6 +351,16 @@ function App() {
                         Launch
                       </button>
                       <button
+                        className="btn secondary"
+                        onClick={handleCreateShortcut}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path>
+                          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        Desktop Shortcut
+                      </button>
+                      <button
                         className="btn danger"
                         onClick={() => handleRemove(selectedVersion)}
                       >
@@ -354,74 +386,25 @@ function App() {
                 )}
               </div>
 
-              <div className="asset-section">
-                <h3>Asset Status</h3>
-                <div className="asset-grid">
-                  <div className={`asset-item ${assetStatus?.has_lang ? "ok" : "missing"}`}>
-                    <div className="asset-icon">
-                      {assetStatus?.has_lang ? (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="20,6 9,17 4,12"></polyline>
-                        </svg>
-                      ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                      )}
-                    </div>
-                    <div className="asset-info">
-                      <span className="asset-name">Language Files</span>
-                      <span className="asset-status">{assetStatus?.has_lang ? "Present" : "Missing"}</span>
-                    </div>
+              <div className="changelog-section">
+                <h3>Changelog</h3>
+                {loadingChangelog ? (
+                  <div className="changelog-loading">Loading changelog...</div>
+                ) : (
+                  <div className="changelog-content">
+                    {changelog.split('\n').map((line, i) => {
+                      if (line.startsWith('# ')) {
+                        return <h4 key={i}>{line.replace('# ', '')}</h4>;
+                      } else if (line.startsWith('## ')) {
+                        return <h5 key={i}>{line.replace('## ', '')}</h5>;
+                      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+                        return <li key={i}>{line.replace(/^[-*] /, '')}</li>;
+                      } else if (line.trim()) {
+                        return <p key={i}>{line}</p>;
+                      }
+                      return null;
+                    })}
                   </div>
-
-                  <div className={`asset-item ${assetStatus?.has_graphics ? "ok" : "missing"}`}>
-                    <div className="asset-icon">
-                      {assetStatus?.has_graphics ? (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="20,6 9,17 4,12"></polyline>
-                        </svg>
-                      ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                      )}
-                    </div>
-                    <div className="asset-info">
-                      <span className="asset-name">Graphics</span>
-                      <span className="asset-status">{assetStatus?.has_graphics ? "Present" : "Missing"}</span>
-                    </div>
-                  </div>
-
-                  <div className={`asset-item ${assetStatus?.has_sound ? "ok" : "missing"}`}>
-                    <div className="asset-icon">
-                      {assetStatus?.has_sound ? (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="20,6 9,17 4,12"></polyline>
-                        </svg>
-                      ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                      )}
-                    </div>
-                    <div className="asset-info">
-                      <span className="asset-name">Sound Effects</span>
-                      <span className="asset-status">{assetStatus?.has_sound ? "Present" : "Missing"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedVersion.is_downloaded && (!assetStatus?.has_lang || !assetStatus?.has_graphics || !assetStatus?.has_sound) && (
-                  <button className="btn secondary" onClick={handleDownloadAssets}>
-                    Download Missing Assets
-                  </button>
                 )}
               </div>
             </>
@@ -460,6 +443,19 @@ function App() {
                 onChange={(e) => setLaunchOptions(e.target.value)}
                 placeholder="e.g., -v -g"
               />
+            </div>
+
+            <div className="setting-group">
+              <label>Default Version</label>
+              <select
+                value={defaultVersion}
+                onChange={(e) => setDefaultVersion(e.target.value)}
+              >
+                <option value="">None</option>
+                {versions.filter(v => v.is_downloaded).map(v => (
+                  <option key={v.tag} value={v.tag}>{v.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="modal-actions">

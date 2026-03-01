@@ -56,7 +56,7 @@ pub struct AssetStatus {
 pub struct AppConfig {
     pub install_dir: String,
     pub launch_options: String,
-    pub auto_download_assets: bool,
+    pub default_version: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -65,7 +65,7 @@ impl Default for AppConfig {
         Self {
             install_dir: default_dir,
             launch_options: String::new(),
-            auto_download_assets: true,
+            default_version: None,
         }
     }
 }
@@ -690,6 +690,119 @@ pub fn load_config() -> AppConfig {
     AppConfig::default()
 }
 
+#[tauri::command]
+async fn fetch_changelog(state: State<'_, Arc<AppState>>, version_tag: String) -> Result<String, String> {
+    let tag = version_tag.trim_start_matches("jgrpp-");
+    let url = format!("https://raw.githubusercontent.com/JGRennison/OpenTTD-patches/{}/jgrpp-changelog.md", tag);
+    
+    let response = state.client
+        .get(&url)
+        .header("User-Agent", "JGRPP-Launcher")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch changelog: {}", e))?;
+    
+    let changelog = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read changelog: {}", e))?;
+    
+    Ok(changelog)
+}
+
+#[tauri::command]
+async fn create_shortcut(
+    state: State<'_, Arc<AppState>>,
+    version_tag: String,
+) -> Result<String, String> {
+    info!("Creating shortcut for {}", version_tag);
+    
+    let config = state.config.lock().await;
+    let version_dir = PathBuf::from(&config.install_dir).join(&version_tag);
+    let platform = get_platform_string();
+    let executable = get_executable_name(&platform);
+    
+    fn find_executable_path(dir: &Path, exec_name: &str) -> Option<PathBuf> {
+        let path = dir.join(exec_name);
+        if path.exists() {
+            return Some(path);
+        }
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(found) = find_executable_path(&path, exec_name) {
+                        return Some(found);
+                    }
+                }
+            }
+        }
+        None
+    }
+    
+    let exe_path = find_executable_path(&version_dir, executable).ok_or_else(|| {
+        format!("Executable not found for {}", version_tag)
+    })?;
+    
+    let exe_path_str = exe_path.to_string_lossy().to_string();
+    
+    let desktop_dir = dirs::desktop_dir().ok_or("Could not find desktop directory")?;
+    let shortcut_name = format!("JGRPP {}", version_tag);
+    let shortcut_path = desktop_dir.join(&shortcut_name);
+    
+    #[cfg(target_os = "windows")]
+    {
+        let batch_content = format!(
+            "@echo off\n\"{}\" %*",
+            exe_path_str.replace("\\", "\\\\")
+        );
+        fs::write(shortcut_path.with_extension("bat"), batch_content)
+            .map_err(|e| format!("Failed to create shortcut: {}", e))?;
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let desktop_entry = format!(
+            "[Desktop Entry]\nType=Application\nName={}\nExec={} %U\nTerminal=false\nCategories=Game;",
+            shortcut_name,
+            exe_path_str
+        );
+        let sp = shortcut_path.clone();
+        fs::write(&sp, desktop_entry)
+            .map_err(|e| format!("Failed to create shortcut: {}", e))?;
+        
+        let _ = Command::new("chmod")
+            .arg("+x")
+            .arg(&sp)
+            .output();
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        return Err("macOS shortcuts should use the app bundle".to_string());
+    }
+    
+    info!("Shortcut created at {}", shortcut_path.display());
+    Ok(shortcut_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn launch_default_version(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), String> {
+    let default_version = {
+        let config = state.config.lock().await;
+        config.default_version.clone()
+    };
+    
+    if let Some(version) = default_version {
+        return launch_version(app, state, version).await;
+    }
+    
+    Err("No default version set".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -718,8 +831,9 @@ pub fn run() {
             download_version,
             remove_version,
             launch_version,
-            check_asset_status,
-            download_assets,
+            fetch_changelog,
+            create_shortcut,
+            launch_default_version,
             get_install_directory,
             set_install_directory,
             get_platform,

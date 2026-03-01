@@ -5,16 +5,18 @@
 }
 
 :root {
-  --primary-bg: #1a1a2e;
-  --secondary-bg: #16213e;
-  --card-bg: #0f3460;
-  --accent: #e94560;
-  --success: #00d9a0;
-  --warning: #f39c12;
-  --text-primary: #eaeaea;
-  --text-secondary: #a0a0a0;
-  --border: #2a2a4a;
-  --hover: rgba(233, 69, 96, 0.1);
+  --primary-bg: #0d1117;
+  --secondary-bg: #161b22;
+  --card-bg: #21262d;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --success: #3fb950;
+  --danger: #f85149;
+  --warning: #d29922;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --border: #30363d;
+  --hover: rgba(88, 166, 255, 0.1);
 }
 
 body {
@@ -28,7 +30,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+  background: var(--primary-bg);
 }
 
 .app.loading {
@@ -50,12 +52,45 @@ body {
   to { transform: rotate(360deg); }
 }
 
+.window-controls {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  z-index: 100;
+}
+
+.window-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.window-btn:hover {
+  background: var(--accent);
+  color: var(--primary-bg);
+}
+
+.window-btn.close:hover {
+  background: var(--danger);
+}
+
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: rgba(0, 0, 0, 0.3);
+  padding: 16px 24px 16px 80px;
+  background: var(--secondary-bg);
   border-bottom: 1px solid var(--border);
 }
 
@@ -68,10 +103,13 @@ body {
 .header h1 {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), #ff6b6b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .platform-badge {
@@ -80,6 +118,26 @@ body {
   border-radius: 20px;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.btn-launch-default {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--accent), #1f6feb);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-launch-default:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
 }
 
 .settings-btn {
@@ -105,7 +163,7 @@ body {
 
 .sidebar {
   width: 320px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--secondary-bg);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -160,12 +218,16 @@ body {
 
 .version-card:hover {
   transform: translateX(4px);
-  background: rgba(15, 52, 96, 0.8);
+  background: #292e36;
 }
 
 .version-card.selected {
   border-color: var(--accent);
-  background: rgba(233, 69, 96, 0.1);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.version-card.default {
+  border-left: 3px solid var(--accent);
 }
 
 .version-info {
@@ -178,6 +240,18 @@ body {
 .version-name {
   font-weight: 600;
   font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.default-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--accent);
+  color: var(--primary-bg);
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 .version-date {
@@ -199,7 +273,7 @@ body {
 }
 
 .status-badge.downloaded {
-  background: rgba(0, 217, 160, 0.2);
+  background: rgba(63, 185, 80, 0.2);
   color: var(--success);
 }
 
@@ -214,7 +288,6 @@ body {
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .version-details h2 {
@@ -253,13 +326,13 @@ body {
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, var(--accent), #ff6b6b);
-  color: white;
+  background: var(--accent);
+  color: var(--primary-bg);
 }
 
 .btn.primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+  box-shadow: 0 4px 15px rgba(88, 166, 255, 0.4);
 }
 
 .btn.primary:disabled {
@@ -277,24 +350,25 @@ body {
 .btn.secondary:hover {
   background: var(--card-bg);
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 .btn.danger {
   background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--danger);
+  border: 1px solid var(--danger);
 }
 
 .btn.danger:hover {
-  background: rgba(233, 69, 96, 0.1);
+  background: rgba(248, 81, 73, 0.1);
 }
 
 .btn.launch {
-  background: linear-gradient(135deg, var(--success), #00b894);
+  background: linear-gradient(135deg, var(--success), #238636);
 }
 
 .btn.launch:hover {
-  box-shadow: 0 4px 15px rgba(0, 217, 160, 0.4);
+  box-shadow: 0 4px 15px rgba(63, 185, 80, 0.4);
 }
 
 .progress-container {
@@ -310,7 +384,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), #ff6b6b);
+  background: linear-gradient(90deg, var(--accent), #1f6feb);
   transition: width 0.3s ease;
 }
 
@@ -321,65 +395,50 @@ body {
   color: var(--text-secondary);
 }
 
-.asset-section {
+.changelog-section {
   background: var(--card-bg);
   border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 24px;
 }
 
-.asset-section h3 {
+.changelog-section h3 {
   font-size: 18px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   color: var(--text-secondary);
 }
 
-.asset-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+.changelog-loading {
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
-.asset-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-}
-
-.asset-item.ok .asset-icon {
-  color: var(--success);
-}
-
-.asset-item.missing .asset-icon {
-  color: var(--warning);
-}
-
-.asset-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
-}
-
-.asset-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.asset-name {
-  font-weight: 600;
+.changelog-content {
+  max-height: 400px;
+  overflow-y: auto;
   font-size: 14px;
+  line-height: 1.6;
 }
 
-.asset-status {
-  font-size: 12px;
+.changelog-content h4 {
+  font-size: 18px;
+  color: var(--accent);
+  margin: 16px 0 8px 0;
+}
+
+.changelog-content h5 {
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 12px 0 8px 0;
+  font-weight: 600;
+}
+
+.changelog-content p {
+  margin-bottom: 8px;
+}
+
+.changelog-content li {
+  margin-left: 20px;
+  margin-bottom: 4px;
   color: var(--text-secondary);
 }
 
@@ -388,7 +447,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--secondary-bg);
   border-top: 1px solid var(--border);
   font-size: 13px;
 }
@@ -420,7 +479,7 @@ body {
   padding: 32px;
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border);
 }
 
 .modal h2 {
@@ -464,9 +523,26 @@ body {
   font-size: 14px;
 }
 
-.setting-group input:focus {
+.setting-group input:focus,
+.setting-group select:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.setting-group select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .directory-input button {
@@ -482,6 +558,7 @@ body {
 .directory-input button:hover {
   background: var(--accent);
   border-color: var(--accent);
+  color: var(--primary-bg);
 }
 
 .modal-actions {

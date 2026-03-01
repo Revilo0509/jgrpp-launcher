@@ -18,11 +18,13 @@
         "minWidth": 900,
         "minHeight": 600,
         "center": true,
-        "resizable": true
+        "resizable": true,
+        "decorations": false,
+        "transparent": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://*.github.com"
+      "csp": "default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com https://*.github.com https://raw.githubusercontent.com"
     }
   },
   "bundle": {
