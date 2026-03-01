@@ -19,12 +19,9 @@ jobs:
           - platform: 'macos-latest'
             target: 'x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
-            target: 'aarch64-unknown-linux-gnu'
-          - platform: 'ubuntu-22.04'
             target: 'x86_64-unknown-linux-gnu'
           - platform: 'windows-latest'
             target: ''
-            args: '--no-bundle'
 
     runs-on: ${{ matrix.platform }}
 
@@ -73,5 +70,6 @@ jobs:
           releaseName: 'JGRPP Launcher v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
-          args: ${{ matrix.target != '' && format('--target {0}', matrix.target) || matrix.args }}
-          artifactNamePattern: 'jgrpp-launcher-{{version}}-{{os}}-{{arch}}.{{ext}}'
+          args: ${{ matrix.target != '' && format('--target {0}', matrix.target) || '' }}
+          assetNamePattern: 'jgrpp-launcher-{{version}}-{{os}}-{{arch}}.{{ext}}'
+          uploadPlainBinary: true
