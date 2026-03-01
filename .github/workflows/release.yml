@@ -48,6 +48,16 @@ jobs:
       - name: Build Tauri binary
         run: npm run tauri build -- --no-bundle
 
+      - name: Rename binary (Linux)
+        if: matrix.runner == 'ubuntu-22.04'
+        run: |
+          mv src-tauri/target/release/jgrpp-launcher jgrpp-launcher-linux
+
+      - name: Rename binary (Windows)
+        if: matrix.runner == 'windows-latest'
+        run: |
+          mv src-tauri/target/release/jgrpp-launcher.exe jgrpp-launcher-windows.exe
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
