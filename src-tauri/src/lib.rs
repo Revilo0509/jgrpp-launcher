@@ -560,98 +560,6 @@ async fn check_asset_status(
 }
 
 #[tauri::command]
-async fn download_assets(
-    app: AppHandle,
-    state: State<'_, Arc<AppState>>,
-    version_tag: String,
-) -> Result<(), String> {
-    info!("Downloading assets for {}", version_tag);
-    
-    let config = state.config.lock().await;
-    let version_dir = PathBuf::from(&config.install_dir).join(&version_tag);
-    
-    let lang_dir = version_dir.join("lang");
-    if !lang_dir.exists() {
-        fs::create_dir_all(&lang_dir).map_err(|e| e.to_string())?;
-    }
-    
-    let gm_dir = version_dir.join("gm");
-    if !gm_dir.exists() {
-        fs::create_dir_all(&gm_dir).map_err(|e| e.to_string())?;
-    }
-    
-    let sfx_dir = version_dir.join("sfx");
-    if !sfx_dir.exists() {
-        fs::create_dir_all(&sfx_dir).map_err(|e| e.to_string())?;
-    }
-    
-    let base_url = "https://cdn.openttd.org";
-    
-    let lang_urls = vec![
-        format!("{}/lang/0.50.0/english.lng", base_url),
-    ];
-    
-    let graphics_urls = vec![
-        format!("{}/gm/0.50.0/sample.cat", base_url),
-    ];
-    
-    let sound_urls = vec![
-        format!("{}/sfx/0.50.0/wooden.wav", base_url),
-    ];
-    
-    for url in &lang_urls {
-        let filename = url.split('/').last().unwrap_or("english.lng");
-        let path = lang_dir.join(filename);
-        if !path.exists() {
-            download_file(&state.client, url, &path).await?;
-        }
-    }
-    
-    for url in &graphics_urls {
-        let filename = url.split('/').last().unwrap_or("sample.cat");
-        let path = gm_dir.join(filename);
-        if !path.exists() {
-            download_file(&state.client, url, &path).await?;
-        }
-    }
-    
-    for url in &sound_urls {
-        let filename = url.split('/').last().unwrap_or("wooden.wav");
-        let path = sfx_dir.join(filename);
-        if !path.exists() {
-            download_file(&state.client, url, &path).await?;
-        }
-    }
-    
-    let _ = app.emit("assets-downloaded", &version_tag);
-    info!("Assets downloaded for {}", version_tag);
-    
-    Ok(())
-}
-
-async fn download_file(
-    client: &Client,
-    url: &str,
-    dest: &Path,
-) -> Result<(), String> {
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to download {}: {}", url, e))?;
-    
-    let content = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
-    
-    let mut file = File::create(dest).map_err(|e| format!("Failed to create file: {}", e))?;
-    file.write_all(&content).map_err(|e| format!("Failed to write file: {}", e))?;
-    
-    Ok(())
-}
-
-#[tauri::command]
 async fn get_install_directory(state: State<'_, Arc<AppState>>) -> Result<String, String> {
     let config = state.config.lock().await;
     Ok(config.install_dir.clone())
@@ -717,8 +625,42 @@ async fn fetch_changelog(state: State<'_, Arc<AppState>>, version_tag: String) -
         .await
         .map_err(|e| format!("Failed to read changelog: {}", e))?;
     
-    info!("Changelog loaded, length: {}", changelog.len());
-    Ok(changelog)
+    let version_changelog = extract_version_changelog(&changelog, &version_tag);
+    
+    info!("Changelog loaded, length: {}", version_changelog.len());
+    Ok(version_changelog)
+}
+
+fn extract_version_changelog(full_changelog: &str, version_tag: &str) -> String {
+    let clean_version = version_tag
+        .trim_start_matches("jgrpp-")
+        .trim_start_matches('v');
+    
+    let lines: Vec<&str> = full_changelog.lines().collect();
+    let mut in_version_section = false;
+    let mut version_lines: Vec<&str> = Vec::new();
+    let mut found_version = false;
+    
+    for line in &lines {
+        if line.starts_with("### ") {
+            if in_version_section {
+                break;
+            }
+            if line.contains(clean_version) {
+                in_version_section = true;
+                found_version = true;
+                version_lines.push(line);
+            }
+        } else if in_version_section {
+            version_lines.push(line);
+        }
+    }
+    
+    if found_version {
+        version_lines.join("\n")
+    } else {
+        full_changelog.to_string()
+    }
 }
 
 #[tauri::command]
@@ -763,12 +705,23 @@ async fn create_shortcut(
     
     #[cfg(target_os = "windows")]
     {
-        let batch_content = format!(
-            "@echo off\n\"{}\" %*",
+        let shortcut_path = shortcut_path.with_extension("lnk");
+        
+        let ps_script = format!(
+            r#"$WScriptShell = New-Object -ComObject WScript.Shell; $Shortcut = $WScriptShell.CreateShortcut("{}"); $Shortcut.TargetPath = "{}"; $Shortcut.Arguments = ""; $Shortcut.Save()"#,
+            shortcut_path.to_string_lossy().replace("\\", "\\\\"),
             exe_path_str.replace("\\", "\\\\")
         );
-        fs::write(shortcut_path.with_extension("bat"), batch_content)
+        
+        let output = Command::new("powershell")
+            .args(["-ExecutionPolicy", "Bypass", "-Command", &ps_script])
+            .output()
             .map_err(|e| format!("Failed to create shortcut: {}", e))?;
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Failed to create shortcut: {}", stderr));
+        }
     }
     
     #[cfg(target_os = "linux")]

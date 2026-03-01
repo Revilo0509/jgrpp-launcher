@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -62,6 +62,11 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("");
   const [changelog, setChangelog] = useState<string>("");
   const [loadingChangelog, setLoadingChangelog] = useState(false);
+  const selectedVersionRef = useRef(selectedVersion);
+
+  useEffect(() => {
+    selectedVersionRef.current = selectedVersion;
+  }, [selectedVersion]);
 
   useEffect(() => {
     loadData();
@@ -75,6 +80,14 @@ function App() {
       setDownloadProgress(null);
       setStatusMessage("Download complete!");
       loadVersions();
+      if (selectedVersionRef.current) {
+        invoke<GameVersion[]>("fetch_releases").then(vers => {
+          const updated = vers.find(v => v.tag === selectedVersionRef.current?.tag);
+          if (updated) {
+            setSelectedVersion({...updated});
+          }
+        });
+      }
     });
     
     return () => {
@@ -88,7 +101,7 @@ function App() {
       console.log("Selected version changed to:", selectedVersion.tag);
       loadChangelog(selectedVersion.tag);
     }
-  }, [selectedVersion]);
+  }, [selectedVersion?.tag]);
 
   async function loadData() {
     try {
@@ -117,10 +130,14 @@ function App() {
   async function loadVersions() {
     try {
       const vers = await invoke<GameVersion[]>("fetch_releases");
+      const cfg = await invoke<AppConfig>("get_config");
       setVersions(vers);
+      setConfig(cfg);
       if (selectedVersion) {
         const updated = vers.find(v => v.tag === selectedVersion.tag);
-        if (updated) setSelectedVersion(updated);
+        if (updated) {
+          setSelectedVersion({...updated});
+        }
       }
     } catch (err) {
       console.error("Failed to reload versions:", err);
@@ -186,7 +203,12 @@ function App() {
   async function handleLaunchDefault() {
     try {
       setStatusMessage("Launching default version...");
-      await invoke("launch_default_version");
+      const cfg = await invoke<AppConfig>("get_config");
+      if (!cfg.default_version) {
+        setStatusMessage("No default version set");
+        return;
+      }
+      await invoke("launch_version", { versionTag: cfg.default_version });
       setStatusMessage("Game launched!");
     } catch (err) {
       console.error("Launch failed:", err);
@@ -200,19 +222,6 @@ function App() {
     try {
       setStatusMessage("Creating shortcut...");
       const path = await invoke<string>("create_shortcut", { versionTag: selectedVersion.tag });
-      setStatusMessage(`Shortcut created: ${path}`);
-    } catch (err) {
-      console.error("Shortcut failed:", err);
-      setStatusMessage(`Shortcut failed: ${err}`);
-    }
-  }
-
-  async function handleCreateShortcutDefault() {
-    if (!config?.default_version) return;
-    
-    try {
-      setStatusMessage("Creating shortcut for default version...");
-      const path = await invoke<string>("create_shortcut", { versionTag: config.default_version });
       setStatusMessage(`Shortcut created: ${path}`);
     } catch (err) {
       console.error("Shortcut failed:", err);
@@ -274,20 +283,12 @@ function App() {
         </div>
         <div className="header-actions">
           {config?.default_version && (
-            <>
-              <button className="btn-launch-default" onClick={handleLaunchDefault}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="5,3 19,12 5,21"></polygon>
-                </svg>
-                Launch Default
-              </button>
-              <button className="btn-create-shortcut" onClick={handleCreateShortcutDefault} title="Create shortcut for default version">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path>
-                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path>
-                </svg>
-              </button>
-            </>
+            <button className="btn-launch-default" onClick={handleLaunchDefault}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5,3 19,12 5,21"></polygon>
+              </svg>
+              Launch Default
+            </button>
           )}
           <button className="settings-btn" onClick={() => setShowSettings(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -412,7 +413,7 @@ function App() {
               </div>
 
               <div className="changelog-section">
-                <h3>Changelog</h3>
+                <h3>Changelog {selectedVersion.tag && `(${selectedVersion.tag})`}</h3>
                 {loadingChangelog ? (
                   <div className="changelog-loading">Loading changelog...</div>
                 ) : (
