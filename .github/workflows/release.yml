@@ -71,4 +71,3 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           args: ${{ matrix.args }}
-          assetNamePattern: '[name]-[version]-[platform]-[arch].[ext]'
