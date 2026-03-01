@@ -1,4 +1,8 @@
-> **AI-generated**
+> **WARNING: 99.9% AI-generated**
+
+This was just a tool I personally wanted, but there was none. I did not want to make this tool so hence this it's 99.9% AI generated. I do not take credit for this project.
+
+There are some issues I found in initial testing, that I have reported incase somebody wants to fix them. (I will most likely not) But I will maintain the project within a where I'm happy with it.
 
 # JGRPP Launcher
 
@@ -57,9 +61,10 @@ npm run tauri build
 ## Configuration
 
 Settings are stored in your user data directory:
+
 - Windows: `%APPDATA%\com.jgrpp.launcher`
 - Linux: `~/.local/share/com.jgrpp.launcher`
 
 ## License
 
-MIT
+[LICENSE](https://github.com/Revilo0509/jgrpp-launcher/blob/main/LICENSE)
