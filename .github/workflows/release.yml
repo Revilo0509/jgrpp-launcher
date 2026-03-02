@@ -30,6 +30,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
+      - name: install pnpm
+        run: npm install -g pnpm@latest-10
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
