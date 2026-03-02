@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: write
     strategy:
+      fail-fast: false
       matrix:
         include:
           - platform: 'macos-latest'
@@ -49,7 +50,7 @@ jobs:
       - name: install frontend dependencies
         run: npm ci
 
-      - uses: tauri-apps/tauri-action@v1
+      - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
