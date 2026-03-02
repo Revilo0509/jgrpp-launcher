@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "JGRPP Launcher",
-  "version": "1.0.8",
+  "version": "1.0.3",
   "identifier": "com.jgrpp.launcher",
   "build": {
     "beforeDevCommand": "npm run dev",
